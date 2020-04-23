@@ -27,28 +27,6 @@ class docker_websocketHandler(tornado.websocket.WebSocketHandler):
         self.ws_loop = asyncio.get_event_loop()
         self.start_timer.start(self.close,self.ws_loop)
 
-    def on_read(self,fd,events):
-        if events & IOLoop.READ:
-            try:
-                data = self.shell.recv(65535).decode('utf8')
-            except:
-                self.close(reason='ssh closed')
-                self.timer.remove()
-                self.loop.remove_handler(self.fd)
-            else:
-                try:
-                    self.write_message(data)
-                except:
-                    self.close(reason='websocket closed')
-                    self.timer.remove()
-                    self.loop.remove_handler(self.fd)
-
-    async def on_write(self,message):
-        try:
-            self.shell.send(message)
-        except:
-            self.close(reason="ssh closed")
-
     #收到消息时调用on_message函数
     async def on_message(self, message):
         #对第一条消息进行token校验
@@ -74,18 +52,39 @@ class docker_websocketHandler(tornado.websocket.WebSocketHandler):
             await self.on_write(message)
             # print(message)
 
+    def on_read(self,fd,events):
+        if events & IOLoop.READ:
+            try:
+                data = self.shell.recv(65535).decode('utf8')
+                if data == "":
+                    # print("may be input exit")
+                    self.trans.close()
+                    self.close()
+                    self.loop.remove_handler(self.fd)
+                else:
+                    self.write_message(data)
+                    self.action = True
+            except:
+                pass
+
+    async def on_write(self,message):
+        try:
+            self.shell.send(message)
+        except:
+            self.close(reason='ssh closed')
+
     def on_close(self):
         try:
             #关闭连接后删除计时任务
             self.timer.remove()
             self.loop.remove_handler(self.fd)
-            if self.id[0] in docker_websocketHandler.clients:
-                docker_commands.exit1(self.id[0],self.id[1])
-                del docker_websocketHandler.clients[self.id[0]]
             # print("websocket closed")
         except:
             # print("token test failed")
             pass
+        if self.id[0] in docker_websocketHandler.clients:
+            docker_commands.exit1(self.id[0],self.id[1])
+            del docker_websocketHandler.clients[self.id[0]]
 
     async def ssh_channel(self,ip):
         self.trans = paramiko.Transport((ip, 22))
