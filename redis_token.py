@@ -20,9 +20,3 @@ class redis_token:
     def remove(self,token):
         self.r.delete(token)
 
-# pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
-# r = redis.Redis(connection_pool=redis_token.pool)
-# a = ['sss','sssa']
-# a = json.dumps(a)
-# r.setex('name',60,a)
-# print(r['name'])

@@ -27,7 +27,7 @@ class docker_websocketHandler(tornado.websocket.WebSocketHandler):
         self.ws_loop = asyncio.get_event_loop()
         self.start_timer.start(self.close,self.ws_loop)
 
-    #收到消息时调用on_message函数
+     #收到消息时调用on_message函数
     async def on_message(self, message):
         #对第一条消息进行token校验
         if not self.connection:
@@ -78,20 +78,24 @@ class docker_websocketHandler(tornado.websocket.WebSocketHandler):
             #关闭连接后删除计时任务
             self.timer.remove()
             self.loop.remove_handler(self.fd)
+            self.trans.close()
             # print("websocket closed")
         except:
             # print("token test failed")
             pass
-        if self.id[0] in docker_websocketHandler.clients:
-            docker_commands.exit1(self.id[0],self.id[1])
-            del docker_websocketHandler.clients[self.id[0]]
+        try:
+            if self.id[0] in docker_websocketHandler.clients:
+                docker_commands.exit1(self.id[0],self.id[1])
+                del docker_websocketHandler.clients[self.id[0]]
+        except:
+            pass
 
     async def ssh_channel(self,ip):
         self.trans = paramiko.Transport((ip, 22))
         self.trans.start_client()
         self.trans.auth_password(username="123", password="1")
         channel = self.trans.open_session()
-        channel.get_pty()
+        channel.get_pty(term="xterm",width=100,height=52,width_pixels=0,height_pixels=0)
         channel.invoke_shell()
         return channel
 

@@ -15,7 +15,7 @@ def make_app(loop):
 
 def main():
     tornado.options.define("port", default=8081, help="run on the given port", type=int)
-    tornado.options.define("bind",default="192.168.11.184",help="address")
+    tornado.options.define("bind",default="192.168.11.193",help="address")
     tornado.options.parse_command_line()
     loop = tornado.ioloop.IOLoop.current()
     app = make_app(loop)

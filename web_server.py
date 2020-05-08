@@ -32,13 +32,15 @@ class openHandler(tornado.web.RequestHandler):
             send_data = docker_commands.start1(post_data["usrID"],str(post_data["proID"]))
             # print(send_data)
         elif post_data["exec"] == "start2":
+            if post_data["usrID"] in docker_websocketHandler.clients:
+                ws = docker_websocketHandler.clients[post_data["usrID"]]
+                del docker_websocketHandler.clients[post_data["usrID"]]
+                ws.close()
             send_data = docker_commands.start2(post_data["usrID"],str(post_data["proID"]))
-        elif post_data["exec"] == "restart":
-            send_data = docker_commands.restart(post_data["usrID"], str(post_data["proID"]))
         else:
             send_data = {"error": "no such execution"}
         #如果操作执行成功，产生token并返回
-        if "error" not in send_data:
+        if "error" not in send_data and post_data["exec"] != "restart":
             token = hashlib.sha1(os.urandom(24)).hexdigest()
             send_data["token"] = token
             r.add(token,[send_data["containerIP"],post_data["usrID"],str(post_data["proID"])])
@@ -65,17 +67,14 @@ class exitHandler(tornado.web.RequestHandler):
         # print(post_data)
         if post_data["exec"] == "exit1":
             send_data = docker_commands.exit1(post_data["usrID"],str(post_data["proID"]))
+            ws = docker_websocketHandler.clients[post_data["usrID"]]
+            del docker_websocketHandler.clients[post_data["usrID"]]
+            ws.close()
         elif post_data["exec"] == "exit2":
             send_data = docker_commands.exit2(post_data["usrID"], str(post_data["proID"]))
-        elif post_data["exec"] == "exit3":
-            r = redis_token()
-            send_data = docker_commands.exit3(post_data["usrID"], str(post_data["proID"]))
-            token = hashlib.sha1(os.urandom(24)).hexdigest()
-            send_data["token"] = token
-            r.add(token,[send_data["containerIP"],post_data["usrID"],str(post_data["proID"])])
-            docker_websocketHandler.clients[post_data["usrID"]].close()
+            ws = docker_websocketHandler.clients[post_data["usrID"]]
             del docker_websocketHandler.clients[post_data["usrID"]]
-            # print(r.get(token))
+            ws.close()
         else:
             send_data = {"error": "no such execution"}
         self.write(json.dumps(send_data))
